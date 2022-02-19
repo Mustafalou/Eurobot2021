@@ -14,19 +14,22 @@ ros::NodeHandle nh;
 #define Right_ENC_B 8
 
 
-void moveCb( const std_msgs::Float32& msg){
-  drive(msg.data,500);  // blink the led
+void moveCb( const std_msgs::Int16MultiArray& msg){
+  drive(msg.data[0],msg.data[1]);  
 }
-void rotateCb( const std_msgs::Float32& msg){
-  rotate(msg.data,500);  // blink the led
+void rotateCb( const std_msgs::Int16MultiArray& msg){
+  rotate(msg.data[0],msg.data[1]);  
 }
 void stopCb( const std_msgs::Empty& msg){
-  stop();  // blink the led
+  stop();
 }
-ros::Subscriber<std_msgs::Float32> sub("move", &moveCb );
-ros::Subscriber<std_msgs::Float32> sub2("rotate", &rotateCb );
+void startCb(const std_msgs::Empty& msg) {
+  givePosition();
+}
+ros::Subscriber<std_msgs::Int16MultiArray> sub("move", &moveCb );
+ros::Subscriber<std_msgs::Int16MultiArray> sub2("rotate", &rotateCb );
 ros::Subscriber<std_msgs::Empty> sub3("stop", &stopCb );
-
+ros::Subscriber<std_msgs::Empty> sub4("start", &startCb);
 const byte pin_fwdG = 5; //for H-bridge: run motor forward - IN1
 const byte pin_bwdG = 6; //for H-bridge: run motor backward -IN2
 const byte pin_fwdD = 9; //for H-bridge: run motor forward - IN 1
@@ -34,6 +37,8 @@ const byte pin_bwdD = 10; //for H-bridge: run motor backward- IN 2
 
 int right_pos =0 ;
 int left_pos =0 ;
+int final_right_pos=0;
+int final_left_pos=0;
 std_msgs::Int16MultiArray  pos;
 
 ros::Publisher pub_position("position", &pos);
@@ -61,6 +66,7 @@ void setup(){
   nh.subscribe(sub);
   nh.subscribe(sub2);
   nh.subscribe(sub3);
+  nh.subscribe(sub4);
   //Serial.begin(9600);
   pinMode(Right_ENC_A,INPUT);
   pinMode(Right_ENC_B,INPUT);
@@ -86,7 +92,6 @@ void loop(){
 
 
   //Serial.begin(9600);
-  
   distanceG = ((left_pos) * 2 * 3.14 * wheel_rad) / 1920; // 0.035m=Radius of the wheels
   //left_pos = 0;
 
@@ -104,24 +109,22 @@ void loop(){
   Serial.println(x_current);
   Serial.println("Y :");
   Serial.println(y_current);
-  */
-  
   Serial.print("Left pos");
   Serial.println(left_pos);
   Serial.print("Right pos");
   Serial.println(right_pos);
-  
+  */
   nh.spinOnce();
-  
-    
 }
 
 void readRightEncoder(){
+   
    (digitalRead(Right_ENC_B)>0) ? (right_pos++) : (right_pos--);
+   if (left_pos >= final_left_pos && right_pos >= final_right_pos) stop();
 }
-
 void readLeftEncoder(){
    (digitalRead(Left_ENC_B)>0) ? (left_pos--) : (left_pos++);
+   if (left_pos >= final_left_pos && right_pos >= final_right_pos) stop();
 }
 
 void MotorL(int Pulse_Width1) {
@@ -140,7 +143,6 @@ void MotorL(int Pulse_Width1) {
 void MotorR(int Pulse_Width2) {
   if (Pulse_Width2 > 0) {
     analogWrite(pin_fwdD,Pulse_Width2);
-
   }
   if (Pulse_Width2 < 0) {
     Pulse_Width2 = abs(Pulse_Width2);
@@ -153,22 +155,23 @@ void MotorR(int Pulse_Width2) {
 
   }
 }
-void rotate(int val, int tps){
+void rotate(int val, int tick){
   MotorL(val);
   MotorR(-val);
-  delay(tps);
-  stop();
-  
-  
-  }
-void drive(int val, int tps){
+  final_left_pos  += tick;
+  final_right_pos -= tick;
+}
+void drive(int val, int tick){
   MotorL(val);
   MotorR(val);
+  final_right_pos += tick;
+  final_left_pos  += tick;
 }
-int positions[2];
-void stopcb(){
+void stop(){
   MotorL(0);
   MotorR(0);
+  delay(100);
+  givePosition();
 }
 void givePosition(){
   pos.data[2]=right_pos;
