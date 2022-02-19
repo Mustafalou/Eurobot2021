@@ -14,8 +14,7 @@ def rot(ang):
 def stop():
 	stop.publish()
 def Traitement(msg):
-	print(1)
-	rospy.loginfo(msg)
+	print(msg.data[1:3])
 def listener():
 	rospy.init_node('listener')
 	rate=rospy.Rate(10)

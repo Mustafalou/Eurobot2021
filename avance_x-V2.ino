@@ -61,7 +61,6 @@ void setup(){
   nh.subscribe(sub);
   nh.subscribe(sub2);
   nh.subscribe(sub3);
-  //pos.data=(std_msgs::Int16MultiArray::_data_type*) malloc(2*sizeof(std_msgs::Int16MultiArray::_data_type));
   //Serial.begin(9600);
   pinMode(Right_ENC_A,INPUT);
   pinMode(Right_ENC_B,INPUT);
@@ -165,13 +164,13 @@ void rotate(int val, int tps){
 void drive(int val, int tps){
   MotorL(val);
   MotorR(val);
-  //delay(tps);
-  stop();
 }
 int positions[2];
-void stop(){
+void stopcb(){
   MotorL(0);
   MotorR(0);
+}
+void givePosition(){
   pos.data[2]=right_pos;
   pos.data[1]=left_pos;
   pos.data_length=3;
