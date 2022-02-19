@@ -3,18 +3,26 @@ import time
 import rospy
 from std_msgs.msg import Float32, Empty, String, Int16MultiArray
 from sensor_msgs.msg import Range
-pub_lin = rospy.Publisher('move', Float32, queue_size=50)
-pub_rot = rospy.Publisher('rotate', Float32, queue_size=50)
+pub_lin = rospy.Publisher('move', Int16MultiArray, queue_size=50)
+pub_rot = rospy.Publisher('rotate', Int16MultiArray, queue_size=50)
 pub_stop = rospy.Publisher('stop',Empty,queue_size=50)
-
-def lin(dist):
-    	pub_lin.publish(dist)
-def rot(ang):
-    	pub_rot.publish(ang)
+pub_start = rospy.Publisher("start", Empty, queue_size=50)
+positions=[None,None]
+i=0
+msg = Int16MultiArray()
+msg.data = [50,500]
+def lin():
+    	pub_lin.publish(msg)
+def rot():
+    	pub_rot.publish(msg)
 def stop():
-	stop.publish()
+	pub_stop.publish()
 def Traitement(msg):
-	print(msg.data[1:3])
+	global i
+	positions = msg.data[1:3]
+	print(positions)
+	actions[i%2]
+	i+=1
 def listener():
 	rospy.init_node('listener')
 	rate=rospy.Rate(10)
@@ -23,10 +31,11 @@ def listener():
 	r=rospy.Rate(10)
 	print("started Working")
 	try:
+		pub_start.publish()
 		while not rospy.is_shutdown():
-			lin(10)
 			r.sleep()
-	except:
-		print("Extinction")
-		stop()
+	except Exception as e:
+		print(e)
+
+actions=[lin,rot]
 listener()
