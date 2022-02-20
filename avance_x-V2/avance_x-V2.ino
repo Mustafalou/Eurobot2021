@@ -89,11 +89,14 @@ void MotorR(int Pulse_Width2);
 long range_time;
 int i=0;
 void loop(){
-  if (action_done ==true &&  i == 0) i++;stop();
+  if (action_done ==true &&  i == 0){
+    i++;
+    stop();
+  }
   distanceG = ((left_pos) * 2 * 3.14 * wheel_rad) / 1920; // 0.035m=Radius of the wheels
   //left_pos = 0;
 
-  distanceD = ((right_pos) * 2 * 3.14 * wheel_rad) / 1920; //
+  distanceD = ((right_pos) * 2 * 3.14 * wheel_rad) / 1920; // 1920 before
   //right_pos = 0;
 
   distanceC = (distanceG + distanceD) / 2;
@@ -102,33 +105,37 @@ void loop(){
   x_current += cos(theta) * distanceC;
   y_current += sin(theta) * distanceC;
   
-  
-  Serial.print("Left pos");
-  Serial.println(left_pos);
-  Serial.print("Right pos");
-  Serial.println(right_pos);
+  //delay(1000);
+  //Serial.print("Left pos");
+  //Serial.println(left_pos);
+  //Serial.print("Right pos");
+  //Serial.println(right_pos);
   
   nh.spinOnce();
 }
 
 void readRightEncoder(){
-   
+   //Serial.println(right_pos);
+   //Serial.println(action_done);
    if (digitalRead(Right_ENC_B)>0)  {
     right_pos-- ;
-    if (right_pos - final_right_pos <=0) action_done=true;
+    if (right_pos - final_right_pos <=0)action_done=true;
    }else{
     right_pos++;
-    if (right_pos - final_right_pos >=0) action_done=true;
+    if (right_pos - final_right_pos >=0)action_done=true;
    }
    
 }
 void readLeftEncoder(){
+   //Serial.println(left_pos);
+   //Serial.println(action_done);
    if (digitalRead(Left_ENC_B)>0)  {
     left_pos++ ;
-    if (left_pos - final_left_pos >0) action_done=true;
+    if (left_pos - final_left_pos >0)action_done=true;
    }else{
     left_pos--;
-    if (left_pos - final_left_pos <0) action_done=true;
+    //Serial.println("okokoko");
+    if (left_pos - final_left_pos <0)action_done=true;
    }
 }
 
@@ -161,8 +168,8 @@ void MotorR(int Pulse_Width2) {
   }
 }
 void rotate(int val, int tick){
-  final_left_pos  += tick;
-  final_right_pos -= tick;
+  final_left_pos  -= tick;
+  final_right_pos += tick;
   action_done=false;
   i=0;
   delay(500);
