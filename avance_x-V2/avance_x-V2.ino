@@ -59,6 +59,7 @@ double theta = 0.0;
 double x_final = 0.05;
 double y_final = 0.0;
 
+bool action_done = false;
 void setup(){
   
   nh.initNode();
@@ -86,12 +87,9 @@ void setup(){
 void MotorL(int Pulse_Width1);
 void MotorR(int Pulse_Width2);
 long range_time;
-
+int i=0;
 void loop(){
-  
-
-
-  //Serial.begin(9600);
+  if (action_done ==true &&  i == 0) i++;stop();
   distanceG = ((left_pos) * 2 * 3.14 * wheel_rad) / 1920; // 0.035m=Radius of the wheels
   //left_pos = 0;
 
@@ -104,27 +102,34 @@ void loop(){
   x_current += cos(theta) * distanceC;
   y_current += sin(theta) * distanceC;
   
-  /*
-  Serial.println("X :");
-  Serial.println(x_current);
-  Serial.println("Y :");
-  Serial.println(y_current);
+  
   Serial.print("Left pos");
   Serial.println(left_pos);
   Serial.print("Right pos");
   Serial.println(right_pos);
-  */
+  
   nh.spinOnce();
 }
 
 void readRightEncoder(){
    
-   (digitalRead(Right_ENC_B)>0) ? (right_pos++) : (right_pos--);
-   if (left_pos >= final_left_pos && right_pos >= final_right_pos) stop();
+   if (digitalRead(Right_ENC_B)>0)  {
+    right_pos-- ;
+    if (right_pos - final_right_pos <=0) action_done=true;
+   }else{
+    right_pos++;
+    if (right_pos - final_right_pos >=0) action_done=true;
+   }
+   
 }
 void readLeftEncoder(){
-   (digitalRead(Left_ENC_B)>0) ? (left_pos--) : (left_pos++);
-   if (left_pos >= final_left_pos && right_pos >= final_right_pos) stop();
+   if (digitalRead(Left_ENC_B)>0)  {
+    left_pos++ ;
+    if (left_pos - final_left_pos >0) action_done=true;
+   }else{
+    left_pos--;
+    if (left_pos - final_left_pos <0) action_done=true;
+   }
 }
 
 void MotorL(int Pulse_Width1) {
@@ -156,26 +161,34 @@ void MotorR(int Pulse_Width2) {
   }
 }
 void rotate(int val, int tick){
-  MotorL(val);
-  MotorR(-val);
   final_left_pos  += tick;
   final_right_pos -= tick;
+  action_done=false;
+  i=0;
+  delay(500);
+  MotorL(val);
+  MotorR(-val);
 }
 void drive(int val, int tick){
-  MotorL(val);
-  MotorR(val);
   final_right_pos += tick;
   final_left_pos  += tick;
+  action_done=false;
+  i=0;
+  delay(500);
+  MotorL(val);
+  MotorR(val);
+  
 }
 void stop(){
   MotorL(0);
   MotorR(0);
-  delay(100);
   givePosition();
 }
 void givePosition(){
   pos.data[2]=right_pos;
-  pos.data[1]=left_pos;
-  pos.data_length=3;
+  pos.data[1]=left_pos; 
+  pos.data[4]=final_right_pos;
+  pos.data[3]=final_left_pos;  
+  pos.data_length=5;
   pub_position.publish(&pos);
 }
