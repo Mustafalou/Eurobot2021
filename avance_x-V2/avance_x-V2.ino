@@ -5,7 +5,7 @@
 #include <std_msgs/Int16MultiArray.h>
 
 char frameid[] = "position";
-ros::NodeHandle nh;
+ros::NodeHandle nh1;
 
 
 #define Left_ENC_A 2
@@ -28,12 +28,12 @@ void startCb(const std_msgs::Empty& msg) {
 }
 ros::Subscriber<std_msgs::Int16MultiArray> sub("move", &moveCb );
 ros::Subscriber<std_msgs::Int16MultiArray> sub2("rotate", &rotateCb );
-ros::Subscriber<std_msgs::Empty> sub3("stop", &stopCb );
+ros::Subscriber<std_msgs::Empty> sub3("stop", &stopactions );
 ros::Subscriber<std_msgs::Empty> sub4("start", &startCb);
-const byte pin_fwdG = 5; //for H-bridge: run motor forward - IN1
-const byte pin_bwdG = 6; //for H-bridge: run motor backward -IN2
-const byte pin_fwdD = 9; //for H-bridge: run motor forward - IN 1
-const byte pin_bwdD = 10; //for H-bridge: run motor backward- IN 2
+const byte pin_fwdG = 9; //for H-bridge: run motor forward - IN1
+const byte pin_bwdG = 10; //for H-bridge: run motor backward -IN2
+const byte pin_fwdD = 5; //for H-bridge: run motor forward - IN 1
+const byte pin_bwdD = 6; //for H-bridge: run motor backward- IN 2
 
 int right_pos =0 ;
 int left_pos =0 ;
@@ -59,15 +59,20 @@ double theta = 0.0;
 double x_final = 0.05;
 double y_final = 0.0;
 
-bool action_done = false;
+bool action_done_left = false;
+bool action_done_right = false;
+bool left_forward =false;
+bool right_forward=false;
+void MotorL(int Pulse_Width1);
+void MotorR(int Pulse_Width2);
 void setup(){
   
-  nh.initNode();
-  nh.advertise(pub_position);
-  nh.subscribe(sub);
-  nh.subscribe(sub2);
-  nh.subscribe(sub3);
-  nh.subscribe(sub4);
+  nh1.initNode();
+  nh1.advertise(pub_position);
+  nh1.subscribe(sub);
+  nh1.subscribe(sub2);
+  nh1.subscribe(sub3);
+  nh1.subscribe(sub4);
   //Serial.begin(9600);
   pinMode(Right_ENC_A,INPUT);
   pinMode(Right_ENC_B,INPUT);
@@ -81,16 +86,26 @@ void setup(){
   digitalWrite(pin_bwdG, 0); //stop motor
   digitalWrite(pin_fwdD, 0); //stop motor
   digitalWrite(pin_bwdD, 0); //stop motor
+  //MotorR(50);
+  //MotorL(-50);
   //Serial.begin(9600);
+  //Serial.println("Start");
 }
+int test=0;
 
-void MotorL(int Pulse_Width1);
-void MotorR(int Pulse_Width2);
 long range_time;
 int i=0;
 void loop(){
-  if (action_done ==true &&  i == 0){
+  if (action_done_left){
+    MotorL(0);
+  }
+  if (action_done_right){
+    MotorR(0);
+  }
+  if (action_done_left && action_done_right && i == 0){
     i++;
+    
+    //Serial.println("je ss la");
     stop();
   }
   distanceG = ((left_pos) * 2 * 3.14 * wheel_rad) / 1920; // 0.035m=Radius of the wheels
@@ -105,13 +120,13 @@ void loop(){
   x_current += cos(theta) * distanceC;
   y_current += sin(theta) * distanceC;
   
-  //delay(1000);
-  //Serial.print("Left pos");
-  //Serial.println(left_pos);
-  //Serial.print("Right pos");
-  //Serial.println(right_pos);
-  
-  nh.spinOnce();
+  /*
+  Serial.print("Left pos");
+  Serial.println(left_pos);
+  Serial.print("Right pos");
+  Serial.println(right_pos);
+  */
+  nh1.spinOnce();
 }
 
 void readRightEncoder(){
@@ -119,24 +134,35 @@ void readRightEncoder(){
    //Serial.println(action_done);
    if (digitalRead(Right_ENC_B)>0)  {
     right_pos-- ;
-    if (right_pos - final_right_pos <=0)action_done=true;
+    if (right_pos - final_right_pos <=0 && !right_forward){
+      action_done_right=true;
+    }
    }else{
     right_pos++;
-    if (right_pos - final_right_pos >=0)action_done=true;
+    if (right_pos - final_right_pos >=0 && right_forward){
+      action_done_right=true;
+    }
    }
-   
+   //Serial.println(right_pos);
+   //Serial.println(action_done_right);
 }
 void readLeftEncoder(){
    //Serial.println(left_pos);
    //Serial.println(action_done);
    if (digitalRead(Left_ENC_B)>0)  {
     left_pos++ ;
-    if (left_pos - final_left_pos >0)action_done=true;
+    if (left_pos - final_left_pos >0 && left_forward){
+      action_done_left=true;
+      
+    }
    }else{
     left_pos--;
-    //Serial.println("okokoko");
-    if (left_pos - final_left_pos <0)action_done=true;
+    if (left_pos - final_left_pos < 0 && !left_forward){
+      action_done_left=true;
+    }
    }
+   //Serial.println(left_pos);
+   //Serial.println(action_done_left);
 }
 
 void MotorL(int Pulse_Width1) {
@@ -168,27 +194,51 @@ void MotorR(int Pulse_Width2) {
   }
 }
 void rotate(int val, int tick){
-  final_left_pos  -= tick;
-  final_right_pos += tick;
-  action_done=false;
+  if (tick>0){
+    final_left_pos  = left_pos  -(tick-50);
+    final_right_pos = right_pos +(tick-50);
+    left_forward =false;
+    right_forward =true;
+    
+    delay(10);
+    MotorL(-val);
+    MotorR(val+7);
+  }else{
+    final_left_pos  = left_pos  -(tick+50);
+    final_right_pos = right_pos +(tick+50);
+    left_forward =true;
+    right_forward =false;
+    delay(10);
+    MotorL(val);
+    MotorR(-(val+7));
+  }
+  action_done_left=false;
+  action_done_right = false;
   i=0;
-  delay(500);
-  MotorL(val);
-  MotorR(-val);
-}
-void drive(int val, int tick){
-  final_right_pos += tick;
-  final_left_pos  += tick;
-  action_done=false;
-  i=0;
-  delay(500);
-  MotorL(val);
-  MotorR(val);
+  
+  
+  
   
 }
+void drive(int val, int tick){
+  final_right_pos = right_pos + tick -100;
+  final_left_pos  = left_pos +  tick -100;
+  action_done_left=false;
+  action_done_right = false;
+  left_forward =true;
+  right_forward =true;
+  i=0;
+  delay(10);
+  MotorL(val);
+  MotorR(val+7);
+  
+}
+void stopactions(){
+  action_done_left=true;
+  action_done_right=true;
+}
 void stop(){
-  MotorL(0);
-  MotorR(0);
+  delay(10);
   givePosition();
 }
 void givePosition(){
@@ -196,6 +246,7 @@ void givePosition(){
   pos.data[1]=left_pos; 
   pos.data[4]=final_right_pos;
   pos.data[3]=final_left_pos;  
-  pos.data_length=5;
+  pos.data[5] = test;
+  pos.data_length=6;
   pub_position.publish(&pos);
 }
